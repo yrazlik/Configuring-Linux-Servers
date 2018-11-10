@@ -15,15 +15,15 @@ Accessible SSH port: 2200.
 
 Application URL: http://35.157.34.238
 
-## Step by step walkthrough
+## Walkthrough
 
-### 1 - Create a new user named *grader* and grant sudo permissions.
+### 1 - Create a new user named *grader* and give sudo permissions.
 
-1. Log into the remote VM  with ubuntu user `$ ssh ubuntu@35.157.34.238`.
-2. Add a new user called *grader*: `$ sudo adduser grader`.
-3. Create a new file under ters directory: `$ sudo nano /etc/sudoers.d/grader`. Fill that newly created file with the following line of text: "grader ALL=(ALL) NOPASSWD:ALL", then save it.
+1. Log into the the server with ubuntu user `$ ssh ubuntu@35.157.34.238`.
+2. Create a new user called *grader*: `$ sudo adduser grader`.
+3. Create a new file under the directory: `$ sudo nano /etc/sudoers.d/grader`. Fill that newly created file with the following line of text: "grader ALL=(ALL) NOPASSWD:ALL", then save it.
 
-### 2 - Update all currently installed packages
+### 2 - Update packages
 
 1. `$ sudo apt-get update`.
 2. `$ sudo apt-get upgrade`.
@@ -88,25 +88,25 @@ sys.path.insert(0, "/var/www/catalog/")
 from catalog import app as application
 ```
 
-### 14 - Install virtual environment, Flask and the project's dependencies
+### 12 - Install project dependencies
 
-1. Install *pip*, the tool for installing Python packages: `$ sudo apt-get install python-pip`.
-2. If *virtualenv* is not installed, use *pip* to install it using the following command: `$ sudo pip install virtualenv`.
-3. Move to the *catalog* folder: `$ cd /var/www/catalog`. Then create a new virtual environment with the following command: `$ sudo virtualenv venv`.
+1. Install *pip*: `$ sudo apt-get install python-pip`.
+2. Install virtualenv: `$ sudo pip install virtualenv`.
+3. cd into *catalog* folder: `$ cd /var/www/catalog`. Then create a new virtual environment with the following command: `$ sudo virtualenv venv`.
 4. Activate the virtual environment: `$ source venv/bin/activate`.
-5. Change permissions to the virtual environment folder: `$ sudo chmod -R 777 venv`.
+5. Change permissions on this folder: `$ sudo chmod -R 777 venv`.
 6. Install Flask: `$ pip install Flask`.
 7. Install all the other project's dependencies: `$ pip install bleach httplib2 request oauth2client sqlalchemy python-psycopg2`. 
 
-### 15 - Configure and enable a new virtual host
+### 13 - Configure and enable a new virtual host
 
-1. Create a virtual host conifg file: `$ sudo nano /etc/apache2/sites-available/catalog.conf`.
-2. Paste in the following lines of code:
+1. Create a virtual host config file: `$ sudo nano /etc/apache2/sites-available/catalog.conf`.
+2. File content should look like this:
 ```
 <VirtualHost *:80>
-    ServerName 52.34.208.247
-    ServerAlias ec2-52-34-208-247.us-west-2.compute.amazonaws.com
-    ServerAdmin admin@52.34.208.247
+    ServerName 35.157.34.238
+    ServerAlias alias
+    ServerAdmin ubuntu@35.157.34.238
     WSGIDaemonProcess catalog python-path=/var/www/catalog:/var/www/catalog/venv/lib/python2.7/site-packages
     WSGIProcessGroup catalog
     WSGIScriptAlias / /var/www/catalog/catalog.wsgi
@@ -124,50 +124,34 @@ from catalog import app as application
     CustomLog ${APACHE_LOG_DIR}/access.log combined
 </VirtualHost>
 ```
-* The **WSGIDaemonProcess** line specifies what Python to use and can save you from a big headache. In this case we are explicitly saying to use the virtual environment and its packages to run the application.
 
 3. Enable the new virtual host: `$ sudo a2ensite catalog`.
 
-### 16 - Install and configure PostgreSQL
+### 14 - Install PostgreSQL
 
-1. Install some necessary Python packages for working with PostgreSQL: `$ sudo apt-get install libpq-dev python-dev`.
-2. Install PostgreSQL: `$ sudo apt-get install postgresql postgresql-contrib`.
-3. Postgres is automatically creating a new user during its installation, whose name is 'postgres'. That is a tusted user who can access the database software. So let's change the user with: `$ sudo su - postgres`, then connect to the database system with `$ psql`.
-4. Create a new user called 'catalog' with his password: `# CREATE USER catalog WITH PASSWORD 'sillypassword';`.
-5. Give *catalog* user the CREATEDB capability: `# ALTER USER catalog CREATEDB;`.
-6. Create the 'catalog' database owned by *catalog* user: `# CREATE DATABASE catalog WITH OWNER catalog;`.
-7. Connect to the database: `# \c catalog`.
-8. Revoke all rights: `# REVOKE ALL ON SCHEMA public FROM public;`.
-9. Lock down the permissions to only let *catalog* role create tables: `# GRANT ALL ON SCHEMA public TO catalog;`.
-10. Log out from PostgreSQL: `# \q`. Then return to the *grader* user: `$ exit`.
-11. Inside the Flask application, the database connection is now performed with: 
+1. `$ sudo apt-get install libpq-dev python-dev`.
+2. `$ sudo apt-get install postgresql postgresql-contrib`.
+3. Create a new user called 'catalog' with his password: `# CREATE USER catalog WITH PASSWORD 'password';`.
+4. Give *catalog* user the CREATEDB capability: `# ALTER USER catalog CREATEDB;`.
+5. Create the 'catalog' database owned by *catalog* user: `# CREATE DATABASE catalog WITH OWNER catalog;`.
+6. Connect to the database: `# \c catalog`.
+7. Revoke all rights: `# REVOKE ALL ON SCHEMA public FROM public;`.
+8. Lock down the permissions to only let *catalog* role create tables: `# GRANT ALL ON SCHEMA public TO catalog;`.
+90. Log out from PostgreSQL: `# \q`. Then return to the *grader* user: `$ exit`.
+10. Create db engine in your app.py file: 
 ```python
 engine = create_engine('postgresql://catalog:sillypassword@localhost/catalog')
 ```
 12. Setup the database with: `$ python /var/www/catalog/catalog/setup_database.py`.
-13. To prevent potential attacks from the outer world we double check that no remote connections to the database are allowed. Open the following file: `$ sudo nano /etc/postgresql/9.3/main/pg_hba.conf` and edit it, if necessary, to make it look like this: 
+13. Do not allow remote connections to the database. Open the file: `$ sudo nano /etc/postgresql/9.3/main/pg_hba.conf` and edit it. It should look like this: 
 ```
 local   all             postgres                                peer
 local   all             all                                     peer
 host    all             all             127.0.0.1/32            md5
 host    all             all             ::1/128                 md5
 ```
-Source: [DigitalOcean](https://www.digitalocean.com/community/tutorials/how-to-secure-postgresql-on-an-ubuntu-vps).
-
-### 17 - Install system monitor tools
-
-1. `$ sudo apt-get update`.
-2. `$ sudo apt-get install glances`.
-3. To start this system monitor program just type this from the command line: `$ glances`.
-4. Type `$ glances -h` to know more about this program's options.
-
-Source: [eHowStuff](http://www.ehowstuff.com/how-to-install-and-use-glances-system-monitor-in-ubuntu/).
-
-### 18 - Update OAuth authorized JavaScript origins
-
-1. To let users correctly log-in change the authorized URI to [http://ec2-52-34-208-247.us-west-2.compute.amazonaws.com/](http://ec2-52-34-208-247.us-west-2.compute.amazonaws.com/) on both Google and Facebook developer dashboards.
 
 ### 19 - Restart Apache to launch the app
 1. `$ sudo service apache2 restart`.
 
-#### Special thanks to [*stueken*](https://github.com/stueken) who wrote a really helpful README in his [repository](https://github.com/stueken/FSND-P5_Linux-Server-Configuration).
+#### Special thanks to [*stueken*](https://github.com/stueken) for his helpful README in his [repository](https://github.com/stueken/FSND-P5_Linux-Server-Configuration).

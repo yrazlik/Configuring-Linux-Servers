@@ -140,7 +140,7 @@ from catalog import app as application
 90. Log out from PostgreSQL: `# \q`. Then return to the *grader* user: `$ exit`.
 10. Create db engine in your app.py file: 
 ```python
-engine = create_engine('postgresql://catalog:sillypassword@localhost/catalog')
+engine = create_engine('postgresql://catalog:password@localhost/catalog')
 ```
 12. Setup the database with: `$ python /var/www/catalog/catalog/setup_database.py`.
 13. Do not allow remote connections to the database. Open the file: `$ sudo nano /etc/postgresql/9.3/main/pg_hba.conf` and edit it. It should look like this: 
